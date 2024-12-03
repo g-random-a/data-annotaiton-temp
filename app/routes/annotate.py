@@ -1,37 +1,15 @@
 from flask import Blueprint, request, jsonify
 from flask import Blueprint, request, jsonify, current_app
-from app.services.annotation.annotation_service import create_annotation, notify_user
+from app.services.annotation.annotation_service import  notify_user
 from datetime import datetime
 import traceback
 import app.validations.annotation.annotation as validation
 from app import mongo
 from pymongo.errors import PyMongoError
+from bson import ObjectId
 
 
 annotate_bp = Blueprint('annotate', __name__)
-
-# @annotate_bp.route('/annotate', methods=['POST'])
-# def annotate_image():
-#     data = request.json
-#     if not data or 'public_id' not in data or 'annotations' not in data:
-#         return jsonify({"error": "Invalid annotation data"}), 400
-
-#     try:
-#         save_annotations(data['public_id'], data['annotations'])
-#         return jsonify({"message": "Annotations saved successfully"}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
-# @annotate_bp.route('/annotations/<public_id>', methods=['GET'])
-# def fetch_annotations(public_id):
-#     try:
-#         annotations = get_annotations(public_id)
-#         if not annotations:
-#             return jsonify({"error": "Image not found"}), 404
-#         return jsonify({"annotations": annotations}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
 
 @annotate_bp.route('/create-annotation', methods=['POST'])
 def create_annotation_endpoint():
@@ -72,6 +50,40 @@ def create_annotation_endpoint():
                     error_trace = traceback.format_exc()
                     print(f"Traceback: {error_trace}")
                     raise email_error  # This will cause the transaction to roll back
+
+    except PyMongoError as db_error:
+        print(f"Database operation failed: {str(db_error)}")
+        error_trace = traceback.format_exc()
+        print(f"Traceback: {error_trace}")
+        return jsonify({"error": "Database operation failed"}), 500
+
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Error occurred: {str(e)}")
+        print(f"Traceback: {error_trace}")
+        return jsonify({"error": str(e)}), 500
+
+@annotate_bp.route('/get-annotation/<string:sessionId>', methods=['GET'])
+def get_annotation(sessionId):
+    try:
+        # Query the database for the provided sessionId
+        annotations_collection = mongo.db.annotations  # Adjust collection name if needed
+        annotation = annotations_collection.find_one({"_id": ObjectId(sessionId)})
+
+        print(annotation)
+        print(sessionId)
+
+        if not annotation:
+            return jsonify({"error": "Annotation not found"}), 404
+
+        # Construct the response
+        response = {
+            "sourceUrls": annotation.get("sourceUrls", ""),
+            "fileType": annotation.get("fileType", "unknown"),  # Default to 'unknown' if not provided
+            "attributes": annotation.get("attributes", {})  # Default to empty dictionary if not provided
+        }
+
+        return jsonify(response), 200
 
     except PyMongoError as db_error:
         print(f"Database operation failed: {str(db_error)}")

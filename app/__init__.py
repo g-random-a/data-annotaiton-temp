@@ -1,3 +1,4 @@
+import cloudinary
 from flask import Flask
 from flask_pymongo import PyMongo
 from flask_cors import CORS
@@ -11,6 +12,12 @@ def create_app(config_class='app.config.Config'):
     app = Flask(__name__)
     app.config.from_object(config_class)
     CORS(app)
+
+    cloudinary.config(
+        cloud_name=app.config['CLOUDINARY_CLOUD_NAME'],
+        api_key=app.config['CLOUDINARY_API_KEY'],
+        api_secret=app.config['CLOUDINARY_API_SECRET']
+    )
 
     # Initialize MongoDB
     mongo.init_app(app)
