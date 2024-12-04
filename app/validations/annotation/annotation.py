@@ -1,15 +1,12 @@
 from bson import ObjectId
 
 def validateCreateAnnotaiton(data):
-    required_fields = ["userEmail", "questionId", "userId", "sourceUrls", "fileType", "attributes"]
+    required_fields = ["questionId", "sourceUrls", "fileType", "attributes"]
     if not all(field in data for field in required_fields):
         return "Missing required fields"
 
     if not ObjectId.is_valid(data["questionId"]):
         return "Invalid question ID"
-
-    if not ObjectId.is_valid(data["userId"]):
-        return "Invalid user ID"
     
     if not isinstance(data["sourceUrls"], list) and len(data['sourceUrls']) == 0:
         return "Invalid source URL"
@@ -66,3 +63,15 @@ def validateCreateAnnotaiton(data):
 
 
     
+def validateCreateUserSession(data):
+    required_fields = ["userId", "questionId"]
+    if not all(field in data for field in required_fields):
+        return "Missing required fields"
+    
+    if not ObjectId.is_valid(data["userId"]):
+        return "Invalid user ID"
+    
+    if not ObjectId.is_valid(data["questionId"]):
+        return "Invalid question ID"
+    
+    return None

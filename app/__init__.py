@@ -11,7 +11,7 @@ db = None
 def create_app(config_class='app.config.Config'):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    CORS(app)
+    CORS(app, methods=["GET", "POST", "PUT", "DELETE"])
 
     cloudinary.config(
         cloud_name=app.config['CLOUDINARY_CLOUD_NAME'],
