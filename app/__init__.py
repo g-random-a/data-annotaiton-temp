@@ -1,8 +1,12 @@
+import logging
+import threading
 import cloudinary
 from flask import Flask
 from flask_pymongo import PyMongo
 from flask_cors import CORS
 from flask_mail import Mail
+
+from app.configs.rabbitmq import connect_rabbitmq
 
 mail = Mail()
 mongo = PyMongo()
@@ -32,10 +36,30 @@ def create_app(config_class='app.config.Config'):
     print(docs)
     print(docs.to_list(length=100))
 
+    try:
+        connect_rabbitmq()
+        logging.info('RabbitMQ connected')
+        # start_consumer_thread('annotation-microservice-events', process_question_messages)
+        logging.info('RabbitMQ consumer started')
+    except Exception as e:
+        logging.error(f'Error initializing RabbitMQ: {e}')
+        raise e
+
     # Register Blueprints
     from app.routes import register_routes
-    from app.test import register_test_routes
+    # from app.test import register_test_routes
     register_routes(app)
     # register_test_routes(app)
+
+    with app.app_context():
+        from app.services.rabbitmq.messageConsumer import consume_messages
+        from app.services.rabbitmq.messageProcesser import process_question_messages
+        def run_consumer():
+            with app.app_context():
+                logging.info("Starting RabbitMQ consumer thread...")
+                consume_messages('annotation-microservice-events', process_question_messages)
+        consumer_thread = threading.Thread(target=run_consumer, daemon=True)
+        consumer_thread.start() 
+        
 
     return app

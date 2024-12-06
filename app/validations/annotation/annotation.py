@@ -1,9 +1,12 @@
 from bson import ObjectId
 
 def validateCreateAnnotaiton(data):
-    required_fields = ["questionId", "sourceUrls", "fileType", "attributes"]
+    required_fields = ["questionId", "inputId", "sourceUrls", "fileType", "attributes"]
     if not all(field in data for field in required_fields):
         return "Missing required fields"
+    
+    if not isinstance(data["inputId"], str):
+        return "Invalid input ID"
 
     if not ObjectId.is_valid(data["questionId"]):
         return "Invalid question ID"
@@ -38,7 +41,7 @@ def validateCreateAnnotaiton(data):
         if not isinstance(value["anchor_id"], str):
             return "Invalid attributes anchor_id"
         
-        if not isinstance(value["type"], int):
+        if not isinstance(value["type"], str):
             return "Invalid attributes type"
         
         if not isinstance(value["desc"], str):
@@ -56,22 +59,23 @@ def validateCreateAnnotaiton(data):
         
         if not isinstance(value["default_option_id"], str):
             return "Invalid attributes default_option_id"
-    
-    
+     
     return None
     
 
-
     
 def validateCreateUserSession(data):
-    required_fields = ["userId", "questionId"]
+    required_fields = ["userEmail", "annotationId"]
     if not all(field in data for field in required_fields):
         return "Missing required fields"
     
-    if not ObjectId.is_valid(data["userId"]):
-        return "Invalid user ID"
+    # if not ObjectId.is_valid(data["userId"]):
+    #     return "Invalid user ID"
     
-    if not ObjectId.is_valid(data["questionId"]):
-        return "Invalid question ID"
+    if not ObjectId.is_valid(data["annotationId"]):
+        return "Invalid annotaion ID"
+
+    if not isinstance(data["userEmail"], str):
+        return "Invalid user email"
     
     return None

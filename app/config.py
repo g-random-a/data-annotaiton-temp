@@ -16,3 +16,8 @@ class Config:
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')  # Email address
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')  # App password for email
     BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
+
+    RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', 'localhost')
+    RABBITMQ_USERNAME = os.getenv('RABBITMQ_USERNAME', 'annotation_ms')
+    RABBITMQ_PASSWORD = os.getenv('RABBITMQ_PASSWORD', '11223344')
+
