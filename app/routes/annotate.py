@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, current_app
 from app.services.annotation.annotation_service import  notify_user
 import datetime
 import traceback
+from app.services.rabbitmq.messageProducer import publish_message
 import app.validations.annotation.annotation as validation
 from app import mongo
 from pymongo.errors import PyMongoError
@@ -128,8 +129,14 @@ def get_annotation(sessionId):
         annotations_session = mongo.db.annotation_session  # Adjust collection name if needed
         annotation_session_res = annotations_session.find_one({"_id": ObjectId(sessionId)})
 
+        if not annotation_session_res:
+            return jsonify({"error": "Annotation session not found"}), 404
+
         annotaion_documents = mongo.db.annotations
         annotation = annotaion_documents.find_one({"_id": ObjectId(annotation_session_res["annotationId"])})
+
+        projects = mongo.db.projects 
+        project = projects.find_one({"sessionId": sessionId})
         
         if not annotation:
             return jsonify({"error": "Annotation not found"}), 404
@@ -138,8 +145,15 @@ def get_annotation(sessionId):
         response = {
             "sourceUrls": annotation.get("sourceUrls", ""),
             "fileType": annotation.get("fileType", "unknown"),  # Default to 'unknown' if not provided
-            "attributes": annotation.get("attributes", {})  # Default to empty dictionary if not provided
+            "attributes": annotation.get("attributes", {}),  # Default to empty dictionary if not provided
         }
+
+        if (project):
+            print("-------------------------------")
+            print(project.get("project_data"))
+            response["metadata"] = project.get("project_data")
+
+        print(response)
 
         return jsonify(response), 200
 
@@ -156,32 +170,96 @@ def get_annotation(sessionId):
         return jsonify({"error": str(e)}), 500
     
 
-@annotate_bp.route('/save-annotation', methods=['POST'])
-def save_project():
+@annotate_bp.route('/save-annotation/<string:sessionId>', methods=['POST'])
+def save_project(sessionId):
     try:
         # Parse incoming JSON data
         project_data = request.json
 
         if not project_data:
-            return jsonify({"error": "No project data provided"}), 400
-
-        # Generate a unique filename or use an identifier from the project data
-        project_id = project_data.get('project', {}).get('pid', 'unknown_project')
+            return jsonify({"error": "No project data provided"}), 406
+        
+        print(project_data)
+        
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z"
-        filename = f"{project_id}_{timestamp}.json"
+        project_data = {
+            "project_data": project_data,
+            "timestamp": timestamp,
+            "sessionId": sessionId
+        }
 
         # Save project data to the database
         projects_collection = mongo.db.projects  # Adjust collection name if needed
-        result = projects_collection.insert_one({
-            "filename": filename,
-            "project_data": project_data,
-            "timestamp": timestamp
-        })
+        
+
+        result = projects_collection.replace_one(
+            {"sessionId": sessionId},
+            project_data,
+            # { "upsert": True },
+            upsert=True
+        )
+
+        if not result.acknowledged:
+            return jsonify({"error": "Failed to save project"}), 406
 
         return jsonify({
             "message": "Project saved successfully",
-            "projectId": str(result.inserted_id),
-            "filename": filename
+        }), 201
+
+    except PyMongoError as db_error:
+        print(f"Database operation failed: {str(db_error)}")
+        error_trace = traceback.format_exc()
+        print(f"Traceback: {error_trace}")
+        return jsonify({"error": "Database operation failed"}), 500
+
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Error occurred: {str(e)}")
+        print(f"Traceback: {error_trace}")
+        return jsonify({"error": "Failed to save project"}), 500
+    
+
+@annotate_bp.route('/submit-annotation/<string:sessionId>', methods=['POST'])
+def submit_project(sessionId):
+    try:
+        # Parse incoming JSON data
+        project_data = request.json
+
+        if not project_data:
+            return jsonify({"error": "No project data provided"}), 406
+        
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z"
+
+        project_data = {
+            "project_data": project_data,
+            "timestamp": timestamp,
+            "sessionId": sessionId,
+            "status": "submitted"
+        }
+
+        # Save project data to the database
+        projects_collection = mongo.db.projects 
+        
+
+        result = projects_collection.replace_one(
+            {"sessionId": sessionId},
+            project_data,
+            # { "upsert": True },
+            upsert=True
+        )
+
+        if not result.acknowledged:
+            return jsonify({"error": "Failed to save project"}), 406
+        
+        # annotations_session = mongo.db.annotation_session  
+        # annotations_session.delete_one({"_id": ObjectId(sessionId)})
+        
+        del project_data["status"]
+        publish_message("question-response-microservice-events", project_data, "QUESTION_SUBMISSION")
+        
+
+        return jsonify({
+            "message": "Project saved successfully",
         }), 201
 
     except PyMongoError as db_error:

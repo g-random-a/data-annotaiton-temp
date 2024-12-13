@@ -1,17 +1,36 @@
-version: '3.9'
-services:
-  rabbitmq:
-    image: rabbitmq:management
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+# version: '3.9'
+# services:
+#   rabbitmq:
+#     image: rabbitmq:management
+#     container_name: rabbitmq
+#     ports:
+#       - "5672:5672"
+#       - "15672:15672"
+#     environment:
+#       - RABBITMQ_DEFAULT_USER=annotation_ms
+#       - RABBITMQ_DEFAULT_PASS=11223344
 
+#   # flask_app:
+#   #   build: .
+#   #   environment:
+#   #     RABBITMQ_HOST: rabbitmq
+#   #   depends_on:
+#   #     - rabbitmq
+#   #   ports:
+#   #     - "5000:5000"
+
+version: '3.8'
+
+services:
   flask_app:
-    build: .
-    environment:
-      RABBITMQ_HOST: rabbitmq
-    depends_on:
-      - rabbitmq
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flask_app
     ports:
       - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    restart: always

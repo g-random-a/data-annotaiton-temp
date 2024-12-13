@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 import cloudinary
 from flask import Flask
 from flask_pymongo import PyMongo
@@ -38,9 +39,9 @@ def create_app(config_class='app.config.Config'):
 
     try:
         connect_rabbitmq()
-        logging.info('RabbitMQ connected')
+        print('RabbitMQ connected')
         # start_consumer_thread('annotation-microservice-events', process_question_messages)
-        logging.info('RabbitMQ consumer started')
+        print('RabbitMQ consumer started')
     except Exception as e:
         logging.error(f'Error initializing RabbitMQ: {e}')
         raise e
@@ -56,10 +57,9 @@ def create_app(config_class='app.config.Config'):
         from app.services.rabbitmq.messageProcesser import process_question_messages
         def run_consumer():
             with app.app_context():
-                logging.info("Starting RabbitMQ consumer thread...")
+                print("Starting RabbitMQ consumer thread...")
                 consume_messages('annotation-microservice-events', process_question_messages)
         consumer_thread = threading.Thread(target=run_consumer, daemon=True)
         consumer_thread.start() 
-        
 
     return app

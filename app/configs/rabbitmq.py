@@ -6,7 +6,7 @@ from app.config import Config
 
 MAX_RETRIES = 5
 RETRY_DELAY_MS = 5000
-queue = 'annotation-microservice-events'
+queue = 'question-response-microservice-events'
 
 connection = None
 channel = None
@@ -17,35 +17,36 @@ def connect_rabbitmq():
 
     while retries < MAX_RETRIES:
         try:
+            print(Config.RABBITMQ_HOST, Config.RABBITMQ_USERNAME, Config.RABBITMQ_PASSWORD)
             credentials = pika.PlainCredentials(Config.RABBITMQ_USERNAME, Config.RABBITMQ_PASSWORD)
-            parameters = pika.ConnectionParameters(Config.RABBITMQ_HOST, credentials=credentials)
+            parameters = pika.ConnectionParameters(host=Config.RABBITMQ_HOST, credentials=credentials)
 
             # Establish connection
             connection = pika.BlockingConnection(parameters)
-            logging.info('RabbitMQ connected')
+            print('RabbitMQ connected')
             print('RabbitMQ connected')
 
             # Create channel
             channel = connection.channel()
-            logging.info('RabbitMQ channel created')
+            print('RabbitMQ channel created')
 
             # Declare queue
             channel.queue_declare(queue=queue, durable=True)
-            logging.info(f'Queue "{queue}" is ready')
+            print(f'Queue "{queue}" is ready')
 
             return
         except Exception as error:
             logging.error(f'RabbitMQ connection attempt failed: {error}')
             retries += 1
             if retries < MAX_RETRIES:
-                logging.info(f'Retrying connection in {RETRY_DELAY_MS * retries / 1000} seconds...')
+                print(f'Retrying connection in {RETRY_DELAY_MS * retries / 1000} seconds...')
                 time.sleep(RETRY_DELAY_MS * retries / 1000)
             else:
                 logging.error('Max retries reached. RabbitMQ connection failed.')
                 raise error
 
 def attempt_reconnect():
-    logging.info('Reconnecting to RabbitMQ...')
+    print('Reconnecting to RabbitMQ...')
     try:
         connect_rabbitmq()
     except Exception as err:
@@ -58,7 +59,7 @@ def close_rabbitmq():
             channel.close()
         if connection:
             connection.close()
-        logging.info('RabbitMQ connection closed')
+        print('RabbitMQ connection closed')
     except Exception as error:
         logging.error(f'Failed to close RabbitMQ connection: {error}')
 

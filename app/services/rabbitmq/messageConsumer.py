@@ -21,7 +21,7 @@ def consume_messages(queue_name, process_message_function):
         """
         try:
             message = json.loads(body)
-            logging.info(f"Received message: {message}")
+            print(f"Received message: {message}")
             process_message_function(message)
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
@@ -30,12 +30,12 @@ def consume_messages(queue_name, process_message_function):
 
     try:
         channel.basic_consume(queue=queue_name, on_message_callback=wrapper)
-        logging.info(f"Started consuming messages from queue '{queue_name}'")
+        print(f"Started consuming messages from queue '{queue_name}'")
         channel.start_consuming()
     except KeyboardInterrupt:
-        logging.info("Stopping consumer...")
+        print("Stopping consumer...")
         channel.stop_consuming()
     except Exception as e:
         logging.error(f"Error while consuming messages: {e}")
     finally:
-        logging.info("RabbitMQ consumer stopped")
+        print("RabbitMQ consumer stopped")
